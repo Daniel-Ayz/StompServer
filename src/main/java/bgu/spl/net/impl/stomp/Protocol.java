@@ -4,6 +4,7 @@ import bgu.spl.net.api.StompMessagingProtocol;
 import bgu.spl.net.srv.ConnectionHandler;
 import bgu.spl.net.srv.Connections;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public class Protocol implements StompMessagingProtocol<String> {
@@ -28,77 +29,86 @@ public class Protocol implements StompMessagingProtocol<String> {
         StompMessage msg = StompMessage.parseToStompMessage(message);
         StompMessage.StompCommand command = msg.command;
         Map<String, String> headers = msg.headers;
-        boolean error = false;
+        String error = "";
         switch(command){
             case CONNECT:
                 if(!headers.containsKey("accept-version") ||
                         !headers.containsKey("host") ||
                         !headers.containsKey("login") ||
                         !headers.containsKey("passcode")) {
-                    error = true;
+                    error = "Doesn't contain required headers";
                 }
                 else{
                     boolean connected = connections.connect(headers.get("login"), headers.get("passcode"),handler, connectionId);
                     if(!connected){
-                        error = true;
+                        error = "Failed to connect";
                     }
                     else{
-                        //send CONNECTED
+                        connections.send(connectionId, createConnected(headers.get("accept-version")).toString());
+                        if(headers.containsKey("receipt"))
+                            connections.send(connectionId, createReceipt(headers.get("receipt")).toString());
                     }
                 }
                 break;
             case SEND:
                 if(!headers.containsKey("destination")) {
-                    error = true;
+                    error = "Doesn't contain required headers";
                 }
                 else{
-                    //check if sub to dest -> if not send >:(
-                    //send SPAM to all users in DESTINATION
+                    if(connections.send(headers.get("destination"), msg.body, connectionId)){
+                        if(headers.containsKey("receipt"))
+                            connections.send(connectionId, createReceipt(headers.get("receipt")).toString());
+                    }
+                    else
+                        error = "Failed to send message to "+headers.get("destination");
                 }
                 break;
             case SUBSCRIBE:
                 if(!headers.containsKey("destination") ||
                         !headers.containsKey("id")) {
-                    error = true;
+                    error = "Doesn't contain required headers";
                 }
                 else{
                     if(connections.subscribe(Integer.parseInt(headers.get("id")), headers.get("destination"))){
-                        //send good message if has receipt id
+                        if(headers.containsKey("receipt"))
+                            connections.send(connectionId, createReceipt(headers.get("receipt")).toString());
                     }
                     else{
-                        error = true;
+                        error = "Failed to Subscribe";
                     }
                 }
                 break;
             case UNSUBSCRIBE:
                 if(!headers.containsKey("id")) {
-                    error = true;
+                    error = "Doesn't contain required headers";
                 }
                 else{
                     if(connections.unsub(connectionId, Integer.parseInt(headers.get("id")))){
-                        //send good message if has receipt id
+                        if(headers.containsKey("receipt"))
+                            connections.send(connectionId, createReceipt(headers.get("receipt")).toString());
                     }
                     else{
-                        error = true;
+                        error = "Failed to Unsubscribe";
                     }
                 }
                 break;
             case DISCONNECT:
                 if(!headers.containsKey("receipt")) {
-                    error = true;
+                    error = "Doesn't contain required headers";
                 }
                 else{
                     connections.disconnect(connectionId);
-                    //send receipt to client
+                    if(headers.containsKey("receipt"))
+                        connections.send(connectionId, createReceipt(headers.get("receipt")).toString());
                     //close connection
                 }
                 break;
             default:
-                error = true;
+                error = "Unknown stomp command";
                 break;
         }
-        if(error){
-            //send error frame angry af >:(
+        if(!error.equals("")){
+            connections.send(connectionId, createError(headers.getOrDefault("receipt",""), message, error).toString());
             //disconnect client
         }
     }
@@ -106,5 +116,26 @@ public class Protocol implements StompMessagingProtocol<String> {
     @Override
     public boolean shouldTerminate() {
         return false;
+        //?
     }
+
+    private StompMessage createReceipt(String receiptId){
+        Map<String, String> headers = new HashMap<String, String>(){{put("receipt-id", receiptId);}};
+        return new StompMessage(StompMessage.StompCommand.RECEIPT, headers, "");
+    }
+
+    private StompMessage createError(String receiptId, String msg, String errorDesc){
+        Map<String, String> headers = new HashMap<String, String>(){{put("message", errorDesc);}};
+        if(!receiptId.equals(""))
+            headers.put("receipt-id", receiptId);
+        return new StompMessage(StompMessage.StompCommand.ERROR, headers, "The message:\n-----\n"+msg+"\n-----");
+    }
+
+    private StompMessage createConnected(String version){
+        Map<String, String> headers = new HashMap<String, String>(){{put("version", version);}};
+        return new StompMessage(StompMessage.StompCommand.CONNECTED, headers, "");
+    }
+
+
+
 }

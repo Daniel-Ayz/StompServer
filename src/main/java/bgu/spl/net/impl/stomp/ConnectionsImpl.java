@@ -8,20 +8,25 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
-public class ConnectionsImpl implements Connections<String> {
+public class ConnectionsImpl<T> implements Connections<T> {
 
     private Map<Integer, String> connectionIdToUsername;
     private Map<String, User> usernameToUser;
     private Map<String, List<User>> topicsToUsers;
+    private AtomicInteger messageCounter;
 
     public ConnectionsImpl(){
-        usernameToUser = new HashMap<>();
-        topicsToUsers = new HashMap<>();
+        connectionIdToUsername = new ConcurrentHashMap<>();
+        usernameToUser = new ConcurrentHashMap<>();
+        topicsToUsers = new ConcurrentHashMap<>();
+        messageCounter = new AtomicInteger(0);
     }
 
     public boolean connect(String username, String password, ConnectionHandler handler, Integer connectionId){
-        if (!connectionIdToUsername.containsKey(connectionId))
+        if (connectionIdToUsername.containsKey(connectionId))
             return false;
         if(!usernameToUser.containsKey(username))
             addUser(username, password);
@@ -64,7 +69,7 @@ public class ConnectionsImpl implements Connections<String> {
     }
 
     @Override
-    public boolean send(int connectionId, String msg) {
+    public boolean send(int connectionId, T msg) {
         String username = connectionIdToUsername.get(connectionId);
         if(username != null){
             User user = usernameToUser.get(username);
@@ -74,14 +79,15 @@ public class ConnectionsImpl implements Connections<String> {
     }
 
     @Override
-    public boolean send(String channel, String msg, Integer connectionId) {
+    public boolean send(String channel, T msg, Integer connectionId) {
         String username = connectionIdToUsername.get(connectionId);
         if(username != null){
             User user = usernameToUser.get(username);
             List<User> users = topicsToUsers.get(channel);
+            int messageId = messageCounter.getAndIncrement();
             if(users.contains(user)) {
                 for (User u : users) {
-                    u.getHandler().send(msg);
+                    u.getHandler().send(createMessage(msg, user, channel, messageId).toString());
                 }
                 return true;
             }
@@ -95,4 +101,10 @@ public class ConnectionsImpl implements Connections<String> {
         usernameToUser.get(username).setConnected(false);
         connectionIdToUsername.remove(connectionId);
     }
+
+    private StompMessage createMessage(String body, User user, String topic, int messageId){
+        Map<String, String> headers = new HashMap<String, String>(){{put("subscription", String.valueOf(user.getTopicId(topic))); put("message-id", String.valueOf(messageId)); put("destination", topic);}};
+        return new StompMessage(StompMessage.StompCommand.MESSAGE, headers, body);
+    }
+
 }

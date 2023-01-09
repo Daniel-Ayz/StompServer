@@ -49,7 +49,7 @@ public class StompMessage {
         String[] lines = msg.split("\n");
         String cmd = lines[0];
         boolean headersEnded = false;
-        for (int i=1;i< lines.length; i++){
+        for (int i=1;i< lines.length - 1; i++){
             if (lines[i].equals(""))
                 headersEnded = true;
             else if(headersEnded){
@@ -62,4 +62,5 @@ public class StompMessage {
         }
         return new StompMessage(StompCommand.valueOf(cmd), headers, body);
     }
+
 }

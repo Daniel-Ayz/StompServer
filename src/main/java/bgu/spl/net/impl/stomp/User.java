@@ -4,6 +4,8 @@ import bgu.spl.net.srv.ConnectionHandler;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class User {
     private String username;
@@ -53,6 +55,14 @@ public class User {
 
     public String getTopic(int id) {
         return idToTopic.get(id);
+    }
+
+    public int getTopicId(String topic){
+        for(Map.Entry entry: idToTopic.entrySet()){
+            if(entry.getValue().equals(topic))
+                return (int)entry.getKey();
+        }
+        return -1;
     }
 
     public ConnectionHandler getHandler(){
