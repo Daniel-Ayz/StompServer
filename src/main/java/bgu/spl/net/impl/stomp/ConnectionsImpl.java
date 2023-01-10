@@ -2,7 +2,6 @@ package bgu.spl.net.impl.stomp;
 
 import bgu.spl.net.srv.ConnectionHandler;
 import bgu.spl.net.srv.Connections;
-import jdk.internal.net.http.common.Pair;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -102,9 +101,9 @@ public class ConnectionsImpl<T> implements Connections<T> {
         connectionIdToUsername.remove(connectionId);
     }
 
-    private StompMessage createMessage(String body, User user, String topic, int messageId){
+    private StompMessage createMessage(T body, User user, String topic, int messageId){
         Map<String, String> headers = new HashMap<String, String>(){{put("subscription", String.valueOf(user.getTopicId(topic))); put("message-id", String.valueOf(messageId)); put("destination", topic);}};
-        return new StompMessage(StompMessage.StompCommand.MESSAGE, headers, body);
+        return new StompMessage(StompMessage.StompCommand.MESSAGE, headers, body.toString());
     }
 
 }

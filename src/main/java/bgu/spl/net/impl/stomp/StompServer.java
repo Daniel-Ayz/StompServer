@@ -1,5 +1,8 @@
 package bgu.spl.net.impl.stomp;
 
+import bgu.spl.net.srv.Connections;
+import bgu.spl.net.srv.Server;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -7,21 +10,27 @@ public class StompServer {
 
     public static void main(String[] args) {
         // TODO: implement this
-//        Map<String, String> headers = new HashMap<String, String>(){{
-//            put("destination", "/dest");
-//            put("id", "1");
-//        }};
-//        StompMessage msg = new StompMessage(StompMessage.StompCommand.SUBSCRIBE, headers, "" );
-//        System.out.println(msg);
-        String str = "CONNECT\n" +
-                "accept-version:1.2\n" +
-                "host:stomp.cs.bgu.ac.il\n" +
-                "login:meni\n" +
-                "passcode:films\n" +
-                "\n" +
-                "^@";
-        System.out.println(str);
-        StompMessage msg = StompMessage.parseToStompMessage(str);
-        System.out.println(msg);
+        if(args.length == 2 && args[0].matches("^[0-9]+$")){
+            if(args[1].equals("reactor")){
+                Server.reactor(
+                        Runtime.getRuntime().availableProcessors(),
+                        Integer.parseInt(args[0]), //port
+                        () ->  new Protocol(), //protocol factory
+                        EncoderDecoder::new, //message encoder decoder factory
+                        new ConnectionsImpl()
+                ).serve();
+            }
+            else if(args[1].equals("tpc")){
+                Server.threadPerClient(
+                        Integer.parseInt(args[0]), //port
+                        () -> new Protocol(), //protocol factory
+                        EncoderDecoder::new, //message encoder decoder factory
+                        new ConnectionsImpl()
+                ).serve();
+            }
+            else{
+                System.out.println("Error in creation, undefined server type.");
+            }
+        }
     }
 }

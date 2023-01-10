@@ -12,16 +12,17 @@ public class Protocol implements StompMessagingProtocol<String> {
     private ConnectionsImpl connections;
     private Integer connectionId;
     private static Integer connectionIdCounter = 0;
+    private boolean shouldTerminate;
 
-    public Protocol(ConnectionsImpl connections){
-        this.connections = connections;
+    public Protocol(){
         this.connectionId = connectionIdCounter;
         connectionIdCounter++;
+        this.shouldTerminate = false;
     }
 
     @Override
-    public void start(int connectionId, Connections<String> connections) {
-        //what's this???? >:(((((
+    public void start(ConnectionsImpl connections) {
+        this.connections = connections;
     }
 
     @Override
@@ -98,9 +99,8 @@ public class Protocol implements StompMessagingProtocol<String> {
                 }
                 else{
                     connections.disconnect(connectionId);
-                    if(headers.containsKey("receipt"))
-                        connections.send(connectionId, createReceipt(headers.get("receipt")).toString());
-                    //close connection
+                    connections.send(connectionId, createReceipt(headers.get("receipt")).toString());
+                    shouldTerminate = true;
                 }
                 break;
             default:
@@ -109,14 +109,13 @@ public class Protocol implements StompMessagingProtocol<String> {
         }
         if(!error.equals("")){
             connections.send(connectionId, createError(headers.getOrDefault("receipt",""), message, error).toString());
-            //disconnect client
+            shouldTerminate = true;
         }
     }
 
     @Override
     public boolean shouldTerminate() {
-        return false;
-        //?
+        return shouldTerminate;
     }
 
     private StompMessage createReceipt(String receiptId){
