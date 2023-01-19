@@ -24,13 +24,13 @@ public class ConnectionsImpl<T> implements Connections<T> {
         messageCounter = new AtomicInteger(0);
     }
 
-    public boolean connect(String username, String password, ConnectionHandler handler, Integer connectionId){
+    public String connect(String username, String password, ConnectionHandler handler, Integer connectionId){
         if (connectionIdToUsername.containsKey(connectionId))
-            return false;
+            return "The client is already logged in, log out before trying again";
         if(!usernameToUser.containsKey(username))
             addUser(username, password);
-        boolean connected = usernameToUser.get(username).connect(password, handler);
-        if(connected)
+        String connected = usernameToUser.get(username).connect(password, handler);
+        if(connected.equals(""))
             addConnectionIdToUser(connectionId, username);
         return connected;
     }
@@ -78,6 +78,11 @@ public class ConnectionsImpl<T> implements Connections<T> {
         return false;
     }
 
+    public void send(ConnectionHandler handler, T msg) {
+        System.out.println("ConnectionsImpl.send->sending message:\n"+msg.toString());
+        handler.send(msg);
+    }
+
     @Override
     public boolean send(String channel, T msg, Integer connectionId) {
         String username = connectionIdToUsername.get(connectionId);
@@ -106,11 +111,22 @@ public class ConnectionsImpl<T> implements Connections<T> {
         return false;
     }
 
+    // public boolean topicExists(String channel){
+    //     return topicsToUsers.containsKey(channel);
+    // }
+
     @Override
     public void disconnect(int connectionId) {
-        String username = connectionIdToUsername.get(connectionId);
-        usernameToUser.get(username).setConnected(false);
-        connectionIdToUsername.remove(connectionId);
+        if(connectionIdToUsername.containsKey(connectionId)){
+            String username = connectionIdToUsername.get(connectionId);
+            User u = usernameToUser.get(username);
+            u.setConnected(false);
+            for (Map.Entry<String, List<User>> entry : topicsToUsers.entrySet()) {
+                List<User> userList = entry.getValue();
+                userList.remove(u);
+            }
+            connectionIdToUsername.remove(connectionId);
+        }
     }
 
     private StompMessage createMessage(T body, User user, String topic, int messageId){

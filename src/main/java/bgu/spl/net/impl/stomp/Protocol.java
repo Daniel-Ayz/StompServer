@@ -41,9 +41,9 @@ public class Protocol implements StompMessagingProtocol<String> {
                     error = "Doesn't contain required headers";
                 }
                 else{
-                    boolean connected = connections.connect(headers.get("login"), headers.get("passcode"),handler, connectionId);
-                    if(!connected){
-                        error = "Failed to connect";
+                    String connected = connections.connect(headers.get("login"), headers.get("passcode"),handler, connectionId);
+                    if(!connected.equals("")){
+                        error = connected;
                     }
                     else{
                         connections.send(connectionId, createConnected(headers.get("accept-version")).toString());
@@ -99,8 +99,8 @@ public class Protocol implements StompMessagingProtocol<String> {
                     error = "Doesn't contain required headers";
                 }
                 else{
-                    connections.disconnect(connectionId);
                     connections.send(connectionId, createReceipt(headers.get("receipt")).toString());
+                    connections.disconnect(connectionId);
                     shouldTerminate = true;
                 }
                 break;
@@ -109,7 +109,8 @@ public class Protocol implements StompMessagingProtocol<String> {
                 break;
         }
         if(!error.equals("")){
-            connections.send(connectionId, createError(headers.getOrDefault("receipt",""), message, error).toString());
+            connections.send(handler, createError(headers.getOrDefault("receipt",""), message, error).toString());
+            connections.disconnect(connectionId);
             shouldTerminate = true;
         }
     }

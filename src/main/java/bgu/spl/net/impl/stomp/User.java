@@ -20,13 +20,16 @@ public class User {
         idToTopic = new HashMap<>();
         this.isConnected = false;
     }
-    public boolean connect(String password, ConnectionHandler handler){
-        if(this.password.equals(password) && !isConnected){
+    public String connect(String password, ConnectionHandler handler){
+        if(isConnected){
+            return "User already logged in";
+        }
+        if(this.password.equals(password)){
             this.handler = handler;
             setConnected(true);
-            return true;
+            return "";
         }
-        return false;
+        return "Wrong password";
     }
 
     public void sub(Integer id, String topic){
