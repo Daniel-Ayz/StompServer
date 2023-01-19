@@ -27,6 +27,7 @@ public class Protocol implements StompMessagingProtocol<String> {
 
     @Override
     public void process(String message, ConnectionHandler handler) {
+        System.out.println("Protocol.process->received messsage:\n"+message);
         StompMessage msg = StompMessage.parseToStompMessage(message);
         StompMessage.StompCommand command = msg.command;
         Map<String, String> headers = msg.headers;
@@ -70,7 +71,7 @@ public class Protocol implements StompMessagingProtocol<String> {
                     error = "Doesn't contain required headers";
                 }
                 else{
-                    if(connections.subscribe(Integer.parseInt(headers.get("id")), headers.get("destination"))){
+                    if(connections.subscribe(connectionId, Integer.parseInt(headers.get("id")), headers.get("destination"))){
                         if(headers.containsKey("receipt"))
                             connections.send(connectionId, createReceipt(headers.get("receipt")).toString());
                     }

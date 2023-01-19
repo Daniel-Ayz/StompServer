@@ -44,11 +44,11 @@ public class ConnectionsImpl<T> implements Connections<T> {
         connectionIdToUsername.put(connectionId, username);
     }
 
-    public boolean subscribe(Integer connectionId, String dest){
+    public boolean subscribe(Integer connectionId, Integer subId, String dest){
         String username = connectionIdToUsername.get(connectionId);
         if(username != null){
             User user = usernameToUser.get(username);
-            user.sub(connectionId, dest);
+            user.sub(subId, dest);
             List<User> users = topicsToUsers.getOrDefault(dest, new ArrayList<User>());
             users.add(user);
             topicsToUsers.put(dest, users);
@@ -69,6 +69,7 @@ public class ConnectionsImpl<T> implements Connections<T> {
 
     @Override
     public boolean send(int connectionId, T msg) {
+        System.out.println("ConnectionsImpl.send->sending message:\n"+msg.toString());
         String username = connectionIdToUsername.get(connectionId);
         if(username != null){
             User user = usernameToUser.get(username);
@@ -83,13 +84,24 @@ public class ConnectionsImpl<T> implements Connections<T> {
         if(username != null){
             User user = usernameToUser.get(username);
             List<User> users = topicsToUsers.get(channel);
-            int messageId = messageCounter.getAndIncrement();
-            if(users.contains(user)) {
-                for (User u : users) {
-                    u.getHandler().send(createMessage(msg, user, channel, messageId).toString());
+            if(users != null){
+                int messageId = messageCounter.getAndIncrement();
+                if(users.contains(user)) {
+                    for (User u : users) {
+                        String message = createMessage(msg, user, channel, messageId).toString();
+                        System.out.println("ConnectionsImpl.sendChannel->sending message:\n"+message.toString());
+                        u.getHandler().send(message);
+                    }
+                    return true;
                 }
-                return true;
+                else{
+                    // you arent subbed
+                }
             }
+            else{
+                //no such topic
+            }
+            
         }
         return false;
     }

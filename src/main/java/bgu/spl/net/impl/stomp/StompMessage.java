@@ -49,11 +49,11 @@ public class StompMessage {
         String[] lines = msg.split("\n");
         String cmd = lines[0];
         boolean headersEnded = false;
-        for (int i=1;i< lines.length - 1; i++){
+        for (int i=1;i< lines.length; i++){
             if (lines[i].equals(""))
                 headersEnded = true;
             else if(headersEnded){
-                body += lines[i];
+                body += lines[i] + "\n";
             }
             else{
                 String[] pair = lines[i].split(":");
